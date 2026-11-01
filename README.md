@@ -14,14 +14,7 @@ Official PHP SDK for the **Unlyx REST API v1** — balance, services, orders (si
 composer require unlyx/unlyx-php
 ```
 
-Until the package is on Packagist, install it from a copy of this folder:
-
-```json
-{
-    "repositories": [{ "type": "path", "url": "../sdks/php" }],
-    "require": { "unlyx/unlyx-php": "^1.0" }
-}
-```
+Packagist: https://packagist.org/packages/unlyx/unlyx-php
 
 ## Quick start
 
