@@ -34,7 +34,7 @@ use Unlyx\Model\Webhook;
  */
 final class Client
 {
-    public const VERSION = '1.0.0';
+    public const VERSION = '1.0.2';
 
     private const MAX_BULK = 100;
 
@@ -267,7 +267,10 @@ final class Client
             if (preg_match('/[\r\n]/', (string) $k . (string) $v)) throw new UnlyxException('Header values must not contain line breaks', 'invalid_argument');
         }
         $query = array_filter($query, static fn ($v) => $v !== null);
-        $url = $this->apiBase . $path . ($query !== [] ? '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986) : '');
+        // Signed requests cover the query too (server signs a canonical path+query), so build the URL from the same
+        // canonical, sorted, RFC3986-encoded query string — then the bytes on the wire match what we sign.
+        $cq = self::canonicalQuery($query);
+        $url = $this->apiBase . $path . ($cq !== '' ? '?' . $cq : '');
         $raw = null;
         if ($body !== null) {
             try {
@@ -361,6 +364,8 @@ final class Client
         if ($this->signingKeyId !== null && $this->signingSecret !== null) {
             $ts = (string) time(); // fresh on every attempt
             $path = (string) parse_url($url, PHP_URL_PATH);
+            $q = (string) parse_url($url, PHP_URL_QUERY); // already canonical (sorted, RFC3986) from request()
+            if ($q !== '') $path .= '?' . $q;
             $h['X-Key-Id'] = $this->signingKeyId;
             $h['X-Timestamp'] = $ts;
             $h['X-Signature'] = self::requestSignature($this->signingSecret, $method, $path, $ts, $raw ?? '');
@@ -370,10 +375,26 @@ final class Client
         return $h;
     }
 
-    /** HMAC-SHA256 (hex) over "{METHOD}\n{path}\n{timestamp}\n{rawBody}". $path is the URL path without the query string. */
+    /**
+     * HMAC-SHA256 (hex) over "{METHOD}\n{path}\n{timestamp}\n{rawBody}". Since 1.0.1 $path is the canonical request
+     * target: the URL path, plus "?" and the canonical query string when there are query params (see canonicalQuery).
+     */
     public static function requestSignature(string $secret, string $method, string $path, string $timestamp, string $rawBody): string
     {
         return hash_hmac('sha256', strtoupper($method) . "\n" . $path . "\n" . $timestamp . "\n" . $rawBody, $secret);
+    }
+
+    /** Canonical query for signing: params sorted by key, each key and value RFC3986-encoded, joined by "&". */
+    public static function canonicalQuery(array $query): string
+    {
+        $query = array_filter($query, static fn ($v) => $v !== null);
+        if ($query === []) return '';
+        ksort($query);
+        $parts = [];
+        foreach ($query as $k => $v) {
+            foreach (is_array($v) ? $v : [$v] as $vv) $parts[] = rawurlencode((string) $k) . '=' . rawurlencode((string) $vv);
+        }
+        return implode('&', $parts);
     }
 
     /** @return array<string,mixed> */

@@ -281,7 +281,7 @@ final class ClientTest extends TestCase
     {
         $this->http->json(200, ['ok' => true, 'page' => 1, 'per_page' => 2, 'total' => 5, 'data' => [self::orderRow(), self::orderRow(['reference' => 'UX-1002'])]]);
         $page = $this->client()->orders(['status' => 'completed', 'since' => new \DateTimeImmutable('2026-10-01T00:00:00+00:00'), 'per_page' => 2]);
-        self::assertSame('https://yourshop.com/api/v1/orders?status=completed&since=2026-10-01T00%3A00%3A00%2B00%3A00&per_page=2', $this->http->last()->url);
+        self::assertSame('https://yourshop.com/api/v1/orders?per_page=2&since=2026-10-01T00%3A00%3A00%2B00%3A00&status=completed', $this->http->last()->url);
         self::assertCount(2, $page->orders);
         self::assertTrue($page->hasMore());
     }

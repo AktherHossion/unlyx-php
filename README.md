@@ -116,7 +116,7 @@ X-Timestamp: <unix seconds>
 X-Signature: hex HMAC-SHA256( "{METHOD}\n{path}\n{timestamp}\n{rawBody}", signingSecret )
 ```
 
-`path` is the URL path without the query string, e.g. `/api/v1/orders`; `rawBody` is the exact JSON sent (empty for GET).
+`path` is the URL path (including `/api/v1`) plus the canonical query when there are parameters — sorted by name, each name and value RFC 3986-encoded, joined by `&` — e.g. `/api/v1/orders?per_page=5&status=paid`; `rawBody` is the exact JSON sent (empty for GET). The client builds this for you.
 
 ## Errors
 
